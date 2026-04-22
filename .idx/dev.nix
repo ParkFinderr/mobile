@@ -1,5 +1,5 @@
 { pkgs, ... }: {
-  channel = "stable-23.11";
+  channel = "stable-24.05";
   packages = [
     pkgs.flutter
     pkgs.jdk17
