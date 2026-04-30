@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/profil_widget.dart';
 
 class ProfilPage extends StatelessWidget {
@@ -7,11 +6,9 @@ class ProfilPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
-      body: const SafeArea(
-        child: ProfilWidget(),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1628),
+      body: SafeArea(child: ProfilWidget()),
     );
   }
 }

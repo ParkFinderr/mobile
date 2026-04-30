@@ -6,13 +6,17 @@ import '../features/detail_booking/page/detail_booking_page.dart';
 import '../features/halaman_scan/page/halaman_scan_page.dart';
 import '../features/history/page/history_page.dart';
 import '../features/home/page/home_page.dart';
+import '../features/home/page/status_kendaraan_page.dart';
 import '../features/login/page/login_page.dart';
+import '../features/profil/page/edit_profil_page.dart';
+import '../features/profil/page/pengaturan_page.dart';
 import '../features/profil/page/profil_page.dart';
 import '../features/register/page/register_page.dart';
 import '../features/scan_berhasil/page/scan_berhasil_page.dart';
 import '../features/splash_screen/page/splash_screen_page.dart';
 import '../features/tutor_popup/page/tutor_popup_page.dart';
 import '../features/welcome/page/welcome_page.dart';
+import '../features/welcome/page/welcome_transition_page.dart';
 import '../features/welcome_scan/page/welcome_scan_page.dart';
 
 class AppRoutes {
@@ -30,6 +34,10 @@ class AppRoutes {
   static const String detailBooking = '/detail-booking';
   static const String history = '/history';
   static const String profil = '/profil';
+  static const String editProfil = '/edit-profil';
+  static const String pengaturan = '/pengaturan';
+  static const String statusKendaraan = '/status-kendaraan';
+  static const String welcomeTransition = '/welcome-transition';
 }
 
 class AppRouter {
@@ -41,6 +49,9 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const WelcomePage());
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => const LoginPage());
+      case AppRoutes.welcomeTransition:
+        return MaterialPageRoute(
+            builder: (_) => const WelcomeTransitionPage());
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => const RegisterPage());
       case AppRoutes.welcomeScan:
@@ -63,10 +74,23 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const HistoryPage());
       case AppRoutes.profil:
         return MaterialPageRoute(builder: (_) => const ProfilPage());
+      case AppRoutes.editProfil:
+        return MaterialPageRoute(builder: (_) => const EditProfilPage());
+      case AppRoutes.pengaturan:
+        return MaterialPageRoute(builder: (_) => const PengaturanPage());
+      case AppRoutes.statusKendaraan:
+        return MaterialPageRoute(
+            builder: (_) => const StatusKendaraanPage());
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Halaman tidak ditemukan')),
+          builder: (_) => Scaffold(
+            backgroundColor: const Color(0xFF0D1628),
+            body: const Center(
+              child: Text(
+                'Halaman tidak ditemukan',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
           ),
         );
     }

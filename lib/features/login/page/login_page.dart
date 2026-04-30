@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/login_widget.dart';
 
 class LoginPage extends StatelessWidget {
@@ -7,11 +6,8 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: const SafeArea(
-        child: LoginWidget(),
-      ),
+    return const Scaffold(
+      body: LoginWidget(),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/welcome_widget.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -7,11 +6,9 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Wellcome')),
-      body: const SafeArea(
-        child: WelcomeWidget(),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1628),
+      body: WelcomeWidget(),
     );
   }
 }

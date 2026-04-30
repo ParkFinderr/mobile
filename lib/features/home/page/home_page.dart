@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/home_widget.dart';
 
 class HomePage extends StatelessWidget {
@@ -7,11 +6,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: const SafeArea(
-        child: HomeWidget(),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1628),
+      body: SafeArea(child: HomeWidget()),
     );
   }
 }

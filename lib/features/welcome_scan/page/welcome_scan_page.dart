@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/welcome_scan_widget.dart';
 
 class WelcomeScanPage extends StatelessWidget {
@@ -7,11 +6,9 @@ class WelcomeScanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Wellcome Scan')),
-      body: const SafeArea(
-        child: WelcomeScanWidget(),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF0A1225),
+      body: WelcomeScanWidget(),
     );
   }
 }

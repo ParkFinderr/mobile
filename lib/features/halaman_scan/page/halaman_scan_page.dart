@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widget/halaman_scan_widget.dart';
 
 class HalamanScanPage extends StatelessWidget {
@@ -7,11 +6,8 @@ class HalamanScanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Halaman Scan')),
-      body: const SafeArea(
-        child: HalamanScanWidget(),
-      ),
+    return const Scaffold(
+      body: HalamanScanWidget(),
     );
   }
 }
