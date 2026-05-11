@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Digunakan untuk scan tiket parkir</string>
 	<key>CFBundleDisplayName</key>
 	<string>Frontmob</string>
 	<key>CFBundleExecutable</key>

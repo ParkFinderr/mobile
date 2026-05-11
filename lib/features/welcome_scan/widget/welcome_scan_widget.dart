@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
-
-const String _cdnBaseUrl = 'https://storage.googleapis.com/parkfinderbucket';
 
 class WelcomeScanWidget extends StatefulWidget {
   const WelcomeScanWidget({super.key});
@@ -13,90 +12,122 @@ class WelcomeScanWidget extends StatefulWidget {
 
 class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
     with SingleTickerProviderStateMixin {
-  bool _isDark = true;
+  final MobileScannerController _cameraCtrl = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    facing: CameraFacing.back,
+    torchEnabled: false,
+  );
 
-  // Animasi garis scan yang bergerak naik-turun
-  late final AnimationController _scanCtrl;
+  // Animasi garis scan naik-turun
+  late final AnimationController _scanLineCtrl;
   late final Animation<double> _scanLine;
+
+  bool _hasScanned = false;
+  bool _torchOn = false;
 
   @override
   void initState() {
     super.initState();
-    _scanCtrl = AnimationController(
+    _scanLineCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
-    _scanLine = CurvedAnimation(parent: _scanCtrl, curve: Curves.easeInOut);
+    _scanLine =
+        CurvedAnimation(parent: _scanLineCtrl, curve: Curves.easeInOut);
   }
 
   @override
   void dispose() {
-    _scanCtrl.dispose();
+    _scanLineCtrl.dispose();
+    _cameraCtrl.dispose();
     super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_hasScanned) return;
+    final barcode = capture.barcodes.firstOrNull;
+    if (barcode == null || barcode.rawValue == null) return;
+
+    setState(() => _hasScanned = true);
+    _cameraCtrl.stop();
+
+    // Langsung navigate ke halaman hasil scan
+    Navigator.pushReplacementNamed(context, AppRoutes.scanBerhasil);
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final topPad = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final now = TimeOfDay.now();
 
-    final imageUrl = _isDark
-        ? '$_cdnBaseUrl/background/bg-wellcome-dark.png'
-        : '$_cdnBaseUrl/background/bg-wellcome-light.png';
-
     return SizedBox.expand(
       child: Stack(
         children: [
-          // ── Layer 1: Background image ──────────────────────────
+          // ── Layer 1: Live camera feed ──────────────────────────
           Positioned.fill(
-            child: Image.network(
-              imageUrl,
-              key: ValueKey(imageUrl),
-              fit: BoxFit.cover,
-              color: Colors.black.withOpacity(0.15),
-              colorBlendMode: BlendMode.darken,
-              errorBuilder: (_, __, ___) => Container(
-                color: const Color(0xFF87CEEB),
-              ),
+            child: MobileScanner(
+              controller: _cameraCtrl,
+              onDetect: _onDetect,
             ),
           ),
 
-          // ── Layer 2: Scan frame + overlay di area tengah ───────
+          // ── Layer 2: Dark overlay (atas & bawah) ───────────────
+          // Atas
           Positioned(
-            top: topPad + 60,
+            top: 0,
             left: 0,
             right: 0,
-            bottom: 200,
-            child: _ScanFrameArea(scanLine: _scanLine),
+            height: topPad + 64,
+            child: Container(color: Colors.black.withOpacity(0.55)),
+          ),
+          // Bawah
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 210 + bottomPad,
+            child: Container(color: Colors.black.withOpacity(0.55)),
+          ),
+          // Kiri
+          Positioned(
+            top: topPad + 64,
+            bottom: 210 + bottomPad,
+            left: 0,
+            width: _sideMargin(context),
+            child: Container(color: Colors.black.withOpacity(0.55)),
+          ),
+          // Kanan
+          Positioned(
+            top: topPad + 64,
+            bottom: 210 + bottomPad,
+            right: 0,
+            width: _sideMargin(context),
+            child: Container(color: Colors.black.withOpacity(0.55)),
           ),
 
-          // ── Layer 3: Bottom info panel ─────────────────────────
+          // ── Layer 3: Scan frame + animasi garis ────────────────
+          Center(
+            child: _ScanFrame(scanLine: _scanLine),
+          ),
+
+          // ── Layer 4: Bottom info panel ─────────────────────────
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF0B1A30),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-              ),
+              color: const Color(0xFF0B1A30),
               padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomPad),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Waktu akses
                   Text(
                     'Diakses pada ${now.format(context)}',
                     style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
+                        color: AppColors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 10),
-
-                  // Judul
                   const Text(
                     'Selamat Datang',
                     style: TextStyle(
@@ -107,30 +138,34 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Silahkan Scan terlebih dahulu',
+                    'Silahkan Scan tiket parkir terlebih dahulu',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
+                        color: AppColors.textSecondary, fontSize: 13),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
 
-                  // Tombol aksi bawah
+                  // Tombol aksi
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Toggle senter
                       _ActionButton(
-                        icon: Icons.manage_search_rounded,
-                        label: 'Manual Cari',
-                        onTap: () => Navigator.pushNamed(
-                            context, AppRoutes.animasiScan),
+                        icon: _torchOn
+                            ? Icons.flashlight_off_rounded
+                            : Icons.flashlight_on_rounded,
+                        label: _torchOn ? 'Matikan' : 'Senter',
+                        onTap: () {
+                          _cameraCtrl.toggleTorch();
+                          setState(() => _torchOn = !_torchOn);
+                        },
                       ),
                       const SizedBox(width: 32),
+                      // Ganti kamera depan/belakang
                       _ActionButton(
-                        icon: Icons.camera_alt_outlined,
-                        label: 'Ambil Foto',
-                        onTap: () => Navigator.pushNamed(
-                            context, AppRoutes.scanBerhasil),
+                        icon: Icons.cameraswitch_rounded,
+                        label: 'Balik',
+                        onTap: () => _cameraCtrl.switchCamera(),
                       ),
                     ],
                   ),
@@ -139,35 +174,37 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
             ),
           ),
 
-          // ── Layer 4: Theme toggle ──────────────────────────────
+          // ── Layer 5: Tombol tutup / kembali ───────────────────
           Positioned(
             top: topPad + 12,
-            right: 16,
+            left: 16,
             child: GestureDetector(
-              onTap: () => setState(() => _isDark = !_isDark),
+              onTap: () => Navigator.pop(context),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white30),
+                  color: Colors.black45,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _isDark ? 'Terang' : 'Gelap',
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      _isDark ? Icons.wb_sunny : Icons.nightlight_round,
-                      color: Colors.amber,
-                      size: 16,
-                    ),
-                  ],
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+
+          // ── Layer 6: Hint teks di atas frame ──────────────────
+          Positioned(
+            top: topPad + 72,
+            left: 0,
+            right: 0,
+            child: const Center(
+              child: Text(
+                'Arahkan kamera ke barcode tiket parkir',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -176,103 +213,89 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
       ),
     );
   }
+
+  double _sideMargin(BuildContext context) {
+    const frameSize = 240.0;
+    return (MediaQuery.of(context).size.width - frameSize) / 2;
+  }
 }
 
-// ── Scan frame + animasi garis ─────────────────────────────────────────────────
-class _ScanFrameArea extends StatelessWidget {
+// ─── Scan frame dengan corner bracket dan garis neon ───────────────────────
+class _ScanFrame extends StatelessWidget {
   final Animation<double> scanLine;
-  const _ScanFrameArea({required this.scanLine});
+  const _ScanFrame({required this.scanLine});
 
   @override
   Widget build(BuildContext context) {
-    const frameSize = 220.0;
-    const cornerLen = 28.0;
-    const cornerWidth = 3.5;
-    const cornerColor = Colors.white;
+    const frameSize = 240.0;
+    const cornerLen = 30.0;
+    const cornerWidth = 4.0;
 
-    return Center(
-      child: SizedBox(
-        width: frameSize,
-        height: frameSize,
-        child: Stack(
-          children: [
-            // ── Corner brackets ──────────────────────────────────
-            // Top-left
-            Positioned(
-              top: 0, left: 0,
-              child: _Corner(h: true, v: true,
-                  len: cornerLen, width: cornerWidth, color: cornerColor),
-            ),
-            // Top-right
-            Positioned(
-              top: 0, right: 0,
-              child: _Corner(h: false, v: true,
-                  len: cornerLen, width: cornerWidth, color: cornerColor),
-            ),
-            // Bottom-left
-            Positioned(
-              bottom: 0, left: 0,
-              child: _Corner(h: true, v: false,
-                  len: cornerLen, width: cornerWidth, color: cornerColor),
-            ),
-            // Bottom-right
-            Positioned(
-              bottom: 0, right: 0,
-              child: _Corner(h: false, v: false,
-                  len: cornerLen, width: cornerWidth, color: cornerColor),
-            ),
+    return SizedBox(
+      width: frameSize,
+      height: frameSize,
+      child: Stack(
+        children: [
+          // Corner brackets
+          Positioned(top: 0, left: 0,
+            child: _Corner(isLeft: true, isTop: true,
+                len: cornerLen, width: cornerWidth)),
+          Positioned(top: 0, right: 0,
+            child: _Corner(isLeft: false, isTop: true,
+                len: cornerLen, width: cornerWidth)),
+          Positioned(bottom: 0, left: 0,
+            child: _Corner(isLeft: true, isTop: false,
+                len: cornerLen, width: cornerWidth)),
+          Positioned(bottom: 0, right: 0,
+            child: _Corner(isLeft: false, isTop: false,
+                len: cornerLen, width: cornerWidth)),
 
-            // ── Scan line animasi ────────────────────────────────
-            AnimatedBuilder(
-              animation: scanLine,
-              builder: (_, __) {
-                final top = scanLine.value * (frameSize - 3);
-                return Positioned(
-                  top: top,
-                  left: 8,
-                  right: 8,
-                  child: Container(
-                    height: 2.5,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          AppColors.accent.withOpacity(0.9),
-                          Colors.transparent,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.accent.withOpacity(0.6),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
+          // Garis scan neon
+          AnimatedBuilder(
+            animation: scanLine,
+            builder: (_, __) {
+              return Positioned(
+                top: scanLine.value * (frameSize - 3),
+                left: 12,
+                right: 12,
+                child: Container(
+                  height: 2.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        AppColors.accent.withOpacity(0.95),
+                        Colors.transparent,
                       ],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accent.withOpacity(0.6),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
-          ],
-        ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Sudut bracket scanner
 class _Corner extends StatelessWidget {
-  final bool h; // true = left, false = right
-  final bool v; // true = top, false = bottom
+  final bool isLeft;
+  final bool isTop;
   final double len;
   final double width;
-  final Color color;
   const _Corner({
-    required this.h,
-    required this.v,
+    required this.isLeft,
+    required this.isTop,
     required this.len,
     required this.width,
-    required this.color,
   });
 
   @override
@@ -282,7 +305,11 @@ class _Corner extends StatelessWidget {
       height: len,
       child: CustomPaint(
         painter: _CornerPainter(
-            isLeft: h, isTop: v, strokeWidth: width, color: color),
+          isLeft: isLeft,
+          isTop: isTop,
+          strokeWidth: width,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -314,15 +341,14 @@ class _CornerPainter extends CustomPainter {
     final dx = isLeft ? size.width : -size.width;
     final dy = isTop ? size.height : -size.height;
 
-    canvas.drawLine(Offset(x, y), Offset(x + dx, y), paint); // horizontal
-    canvas.drawLine(Offset(x, y), Offset(x, y + dy), paint); // vertical
+    canvas.drawLine(Offset(x, y), Offset(x + dx, y), paint);
+    canvas.drawLine(Offset(x, y), Offset(x, y + dy), paint);
   }
 
   @override
   bool shouldRepaint(_) => false;
 }
 
-/// Tombol ikon kecil di bawah
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -344,7 +370,7 @@ class _ActionButton extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withOpacity(0.10),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white24),
             ),

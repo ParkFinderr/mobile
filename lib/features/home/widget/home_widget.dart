@@ -149,24 +149,21 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           StatusCardWidget(
             title: 'Status Tiket\nAktif',
-            icon: Icons.confirmation_number_outlined,
-            iconColor: Colors.orange,
+            cardImage: StatusCardImage.tiket,
             subtitle: 'Diaktifkan Sejak\n01:43:02',
             width: 130,
           ),
           const SizedBox(width: 10),
           StatusCardWidget(
             title: 'Status Booking\nMenunggu Aktivasi',
-            icon: Icons.timelapse,
-            iconColor: AppColors.accent,
+            cardImage: StatusCardImage.waiting,
             subtitle: 'Slot A4 – Lantai 1\nAktivasi dalam 15 menit',
             width: 148,
           ),
           const SizedBox(width: 10),
           StatusCardWidget(
             title: 'Parkir Aktif\nLantai 1 - Zona A- Slot A3',
-            icon: Icons.directions_car,
-            iconColor: AppColors.orange,
+            cardImage: StatusCardImage.car,
             subtitle: '01:43:02',
             width: 140,
             actions: [

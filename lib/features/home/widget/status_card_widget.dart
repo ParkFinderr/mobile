@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
+const String _cdn = 'https://storage.googleapis.com/parkfinderbucket';
+
+/// Enum gambar untuk setiap status card
+enum StatusCardImage { tiket, waiting, car }
+
 /// Widget feature-specific: Card status (tiket aktif, booking menunggu,
-/// parkir aktif) di halaman Home. Mendukung action buttons opsional.
+/// parkir aktif) di halaman Home. Menggunakan gambar dari CDN.
 ///
-/// Hanya digunakan di: HomeWidget (melalui StatusCardsRowWidget).
+/// Hanya digunakan di: HomeWidget (melalui _buildStatusCards)
 class StatusCardWidget extends StatelessWidget {
   final String title;
-  final IconData icon;
-  final Color iconColor;
+  final StatusCardImage cardImage;
   final String subtitle;
   final double width;
   final List<Widget>? actions;
@@ -16,12 +20,22 @@ class StatusCardWidget extends StatelessWidget {
   const StatusCardWidget({
     super.key,
     required this.title,
-    required this.icon,
-    required this.iconColor,
+    required this.cardImage,
     required this.subtitle,
     required this.width,
     this.actions,
   });
+
+  String get _imageUrl {
+    switch (cardImage) {
+      case StatusCardImage.tiket:
+        return '$_cdn/foto/tiket.png';
+      case StatusCardImage.waiting:
+        return '$_cdn/foto/wait.png';
+      case StatusCardImage.car:
+        return '$_cdn/foto/yellow-mobil.png';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,22 +50,45 @@ class StatusCardWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Judul
           Text(
             title,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w600,
+              height: 1.35,
             ),
           ),
           const SizedBox(height: 10),
-          Icon(icon, color: iconColor, size: 36),
+
+          // Gambar dari CDN
+          SizedBox(
+            height: 48,
+            child: Image.network(
+              _imageUrl,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.image_not_supported,
+                color: Colors.white24,
+                size: 36,
+              ),
+            ),
+          ),
+
           const SizedBox(height: 10),
+
+          // Subtitle
           Text(
             subtitle,
             style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 10),
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              height: 1.4,
+            ),
           ),
+
           if (actions != null) ...[
             const SizedBox(height: 8),
             Row(children: actions!),
