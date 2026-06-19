@@ -7,13 +7,13 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_front/app/app.dart';
+import 'package:mobile_front/features/splash_screen/widget/splash_screen_widget.dart';
 
 void main() {
   testWidgets('Menampilkan splash screen saat aplikasi dibuka',
       (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    expect(find.text('Splash Screen'), findsOneWidget);
-    expect(find.text('Mulai'), findsOneWidget);
+    expect(find.byType(SplashScreenWidget), findsOneWidget);
   });
 }

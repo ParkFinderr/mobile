@@ -3,11 +3,13 @@ import '../../core/theme/app_colors.dart';
 
 /// Data model untuk satu item gedung parkir.
 class ParkingItemData {
+  final String id;
   final String name;
   final double occupancyPercent; // 0.0 – 100.0
   final String availableSlotLabel; // contoh: "4/5 Kosong"
 
   const ParkingItemData({
+    this.id = '',
     required this.name,
     required this.occupancyPercent,
     required this.availableSlotLabel,

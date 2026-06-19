@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="ParkFinder — Aplikasi manajemen parkir personal. Scan, booking, riwayat, dan notifikasi.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ParkFinder">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ParkFinder">
+  <meta property="og:description" content="Aplikasi manajemen parkir personal — scan, booking, riwayat, dan notifikasi.">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>ParkFinder</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <script>
+    // PWA Install Prompt Handler
+    window.deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      window.deferredInstallPrompt = e;
+      // Dispatch custom event to notify Flutter
+      window.dispatchEvent(new CustomEvent('pwa-install-available'));
+    });
+
+    window.triggerPWAInstall = async () => {
+      const promptEvent = window.deferredInstallPrompt;
+      if (!promptEvent) {
+        return 'not-available';
+      }
+      // Show the install prompt
+      promptEvent.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await promptEvent.userChoice;
+      // We've used the prompt, and can't use it again, clear it
+      window.deferredInstallPrompt = null;
+      return outcome; // 'accepted' or 'dismissed'
+    };
+
+    // Auto Update Notification Handler
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        if (registration.waiting) {
+          window.dispatchEvent(new CustomEvent('pwa-update-ready'));
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const installingWorker = registration.installing;
+          if (installingWorker != null) {
+            installingWorker.addEventListener('statechange', () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  // New update is available and has been installed, notify user
+                  window.dispatchEvent(new CustomEvent('pwa-update-ready'));
+                }
+              }
+            });
+          }
+        });
+      });
+
+      // Handle controllerchange to ensure proper reload
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

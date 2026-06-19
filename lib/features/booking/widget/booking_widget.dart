@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../public_widget/bottom_nav_bar.dart';
 import '../../public_widget/parking_list_item_widget.dart';
 import '../../public_widget/search_bar_widget.dart';
+import '../service/booking_service.dart';
 
 /// BookingWidget: Composer untuk halaman pencarian dan pemilihan gedung parkir.
 ///
@@ -22,26 +23,38 @@ class _BookingWidgetState extends State<BookingWidget> {
   // ── State ────────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   int _navIndex = 1;
+  bool _isLoading = true;
 
   // ── Data ─────────────────────────────────────────────────────────────────
-  final List<ParkingItemData> _allParking = const [
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Mall Boemi Kedaton', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Lampung City Mall', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Lampung City Mall', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Mall Boemi Kedaton', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Mall Boemi Kedaton', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Lampung City Mall', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Lampung City Mall', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Mall Boemi Kedaton', occupancyPercent: 81, availableSlotLabel: '635/1384 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-    ParkingItemData(name: 'Jurusan Teknik Elektro Universitas Lampung', occupancyPercent: 78, availableSlotLabel: '4/5 Kosong'),
-  ];
+  List<ParkingItemData> _allParking = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAreas();
+  }
+
+  Future<void> _fetchAreas() async {
+    final service = BookingService();
+    final areas = await service.getAreas();
+    
+    if (mounted) {
+      setState(() {
+        _allParking = areas.map((a) {
+          final total = a.totalSlot;
+          final available = a.availableSlots;
+          final occupancy = total > 0 ? ((total - available) / total * 100) : 0.0;
+          return ParkingItemData(
+            id: a.id,
+            name: a.name,
+            occupancyPercent: occupancy,
+            availableSlotLabel: '$available/$total Kosong',
+          );
+        }).toList();
+        _isLoading = false;
+      });
+    }
+  }
 
   List<ParkingItemData> get _filtered {
     final q = _searchCtrl.text.toLowerCase();
@@ -57,6 +70,9 @@ class _BookingWidgetState extends State<BookingWidget> {
     switch (idx) {
       case 0:
         Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 2:
+        Navigator.pushNamed(context, AppRoutes.statusKendaraan);
         break;
       case 3:
         Navigator.pushNamed(context, AppRoutes.history);
@@ -95,15 +111,22 @@ class _BookingWidgetState extends State<BookingWidget> {
 
               // ③ Daftar gedung parkir (filtered)
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _filtered.length,
-                  itemBuilder: (context, i) => ParkingListItemWidget(
-                    item: _filtered[i],
-                    onTap: () => Navigator.pushNamed(
-                        context, AppRoutes.detailBooking),
-                  ),
-                ),
+                child: _isLoading 
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filtered.length,
+                      itemBuilder: (context, i) => ParkingListItemWidget(
+                        item: _filtered[i],
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.detailBooking,
+                            arguments: _filtered[i].id,
+                          );
+                        },
+                      ),
+                    ),
               ),
             ],
           ),

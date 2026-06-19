@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// Widget feature-specific: Card item riwayat parkir menampilkan
-/// waktu dari/hingga, slot parkir, ID tiket, dan plat kendaraan.
+/// waktu dari/hingga, slot parkir, ID tiket, status, dan plat kendaraan.
 ///
 /// Hanya digunakan di: HistoryWidget.
 class HistoryCardWidget extends StatelessWidget {
@@ -13,6 +13,7 @@ class HistoryCardWidget extends StatelessWidget {
   final String slotParkir;
   final String idTiket;
   final String kendaraan;
+  final String status;
 
   const HistoryCardWidget({
     super.key,
@@ -23,7 +24,60 @@ class HistoryCardWidget extends StatelessWidget {
     required this.slotParkir,
     required this.idTiket,
     required this.kendaraan,
+    required this.status,
   });
+
+  Widget _buildStatusBadge() {
+    Color badgeColor;
+    String label;
+
+    switch (status.toLowerCase()) {
+      case 'pending':
+        badgeColor = AppColors.orange;
+        label = 'Pending';
+        break;
+      case 'active':
+        badgeColor = AppColors.green;
+        label = 'Active';
+        break;
+      case 'completed':
+        badgeColor = AppColors.green;
+        label = 'Completed';
+        break;
+      case 'cancelled':
+        badgeColor = AppColors.red;
+        label = 'Cancelled';
+        break;
+      case 'expired':
+        badgeColor = AppColors.yellow;
+        label = 'Expired';
+        break;
+      case 'claimed':
+        badgeColor = AppColors.yellow;
+        label = 'Claimed';
+        break;
+      default:
+        badgeColor = AppColors.textSecondary;
+        label = status.isNotEmpty ? status.toUpperCase() : 'UNKNOWN';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: badgeColor,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,20 +163,25 @@ class HistoryCardWidget extends StatelessWidget {
           const SizedBox(height: 10),
           const Divider(color: AppColors.borderColor, height: 1),
           const SizedBox(height: 8),
-          // Bawah: plat kendaraan
+          // Bawah: status badge & plat kendaraan
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.directions_car_outlined,
-                  color: AppColors.textSecondary, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                kendaraan,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+              _buildStatusBadge(),
+              Row(
+                children: [
+                  const Icon(Icons.directions_car_outlined,
+                      color: AppColors.textSecondary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    kendaraan,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

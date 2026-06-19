@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../service/profile_service.dart';
+import '../service/vehicle_service.dart';
+import '../model/vehicle.dart';
 
 class EditProfilPage extends StatefulWidget {
   const EditProfilPage({super.key});
@@ -9,13 +15,109 @@ class EditProfilPage extends StatefulWidget {
 }
 
 class _EditProfilPageState extends State<EditProfilPage> {
-  final _namaCtrl = TextEditingController(text: 'Imam Ariadi');
-  final _emailCtrl =
-      TextEditingController(text: 'imamariadi775@gmail.com');
-  final _teleponCtrl = TextEditingController(text: '085788322061');
-  final _platCtrl = TextEditingController(text: 'D 12345 FE');
-  final _merekCtrl = TextEditingController(text: 'Honda');
-  final _modelCtrl = TextEditingController(text: 'Civic');
+  final _namaCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _teleponCtrl = TextEditingController();
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String? _photoUrl;
+  List<Vehicle> _vehicles = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profileService = ProfileService();
+    final vehicleService = VehicleService();
+    final profile = await profileService.getProfile();
+    final vehicles = await vehicleService.getVehicles();
+    if (mounted) {
+      setState(() {
+        _namaCtrl.text = profile?.name ?? '';
+        _emailCtrl.text = profile?.email ?? '';
+        _teleponCtrl.text = profile?.phoneNumber ?? '';
+        _photoUrl = profile?.photoUrl;
+        _vehicles = vehicles;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      setState(() => _isSaving = true);
+      
+      final bytes = await pickedFile.readAsBytes();
+      final name = pickedFile.name;
+      
+      final service = ProfileService();
+      final result = await service.uploadPhoto(bytes, name);
+      
+      if (mounted) {
+        setState(() => _isSaving = false);
+        if (result.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadProfile();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih foto: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+    final service = ProfileService();
+    final result = await service.updateProfile(
+      _namaCtrl.text.trim(),
+      _teleponCtrl.text.trim(),
+    );
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (result.success) {
+        _showSuccess();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   InputDecoration _inputDeco(String label) {
     return InputDecoration(
@@ -131,48 +233,76 @@ class _EditProfilPageState extends State<EditProfilPage> {
             ),
 
             Expanded(
-              child: SingleChildScrollView(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 8),
                     // Avatar
-                    Stack(
-                      children: [
-                        Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBg2,
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: AppColors.accent, width: 2),
+                    GestureDetector(
+                      onTap: _isSaving ? null : _pickAndUploadPhoto,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBg2,
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: AppColors.accent, width: 2),
+                            ),
+                            child: _photoUrl != null && _photoUrl!.isNotEmpty
+                                ? ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl: _photoUrl!,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: AppColors.accent,
+                                          ),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.person,
+                                              color: Colors.white70, size: 54),
+                                    ),
+                                  )
+                                : const Icon(Icons.person,
+                                    color: Colors.white70, size: 54),
                           ),
-                          child: const Icon(Icons.person,
-                              color: Colors.white70, size: 54),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.borderColor),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.camera_alt_outlined,
-                              color: AppColors.accent, size: 14),
-                          SizedBox(width: 4),
-                          Text('Ubah Foto',
-                              style: TextStyle(
-                                  color: AppColors.accent, fontSize: 12)),
-                        ],
+                    GestureDetector(
+                      onTap: _isSaving ? null : _pickAndUploadPhoto,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.borderColor),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.camera_alt_outlined,
+                                color: AppColors.accent, size: 14),
+                            SizedBox(width: 4),
+                            Text('Ubah Foto',
+                                style: TextStyle(
+                                    color: AppColors.accent, fontSize: 12)),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -188,12 +318,19 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       decoration: _inputDeco('Nama Lengkap'),
                     ),
                     const SizedBox(height: 14),
-                    _buildFieldLabel('Email*'),
+                    _buildFieldLabel('Email (tidak dapat diubah)'),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _emailCtrl,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _inputDeco('Email'),
+                      readOnly: true,
+                      style: const TextStyle(color: Colors.white54),
+                      decoration: _inputDeco('Email').copyWith(
+                        suffixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: Colors.white38,
+                          size: 18,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     _buildFieldLabel('No Telp*'),
@@ -206,101 +343,60 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Kendaraan utama section
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBg2,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Kendaraan Utama',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Data kendaraan utama tidak dapat diubah. Hubungi admin jika perlu mengubah.',
-                            style: TextStyle(
-                                color: AppColors.textSecondary, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildFieldLabel('Plat Nomor*'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _platCtrl,
-                      enabled: false,
-                      style: const TextStyle(color: Colors.white54),
-                      decoration: _inputDeco('Plat Nomor'),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildFieldLabel('Merek*'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _merekCtrl,
-                      enabled: false,
-                      style: const TextStyle(color: Colors.white54),
-                      decoration: _inputDeco('Merek'),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildFieldLabel('Model*'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _modelCtrl,
-                      enabled: false,
-                      style: const TextStyle(color: Colors.white54),
-                      decoration: _inputDeco('Model'),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Kendaraan Sekunder
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBg2,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Kendaraan Sekunder',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 13)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
+                    // Kendaraan section — link ke VehicleManagementPage
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.vehicleManagement,
+                      ).then((_) => _loadProfile()),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBg2,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.directions_car_outlined,
                                   color: AppColors.accent,
-                                  borderRadius: BorderRadius.circular(8),
+                                  size: 18,
                                 ),
-                                child: const Text('+ Kendaraan',
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Manajemen Kendaraan',
                                     style: TextStyle(
-                                        color: Colors.white, fontSize: 11)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Belum ada kendaraan sekunder. Klik\ntombol "Tambah Kendaraan" untuk\nmenambahkan.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: AppColors.textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _vehicles.isEmpty
+                                  ? 'Belum ada kendaraan. Ketuk untuk menambahkan.'
+                                  : '${_vehicles.length} kendaraan terdaftar: ${_vehicles.map((v) => v.plateNumber).join(', ')}',
+                              style: const TextStyle(
                                 color: AppColors.textSecondary,
-                                fontSize: 12),
-                          ),
-                        ],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -309,17 +405,26 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _showSuccess,
+                        onPressed: _isSaving ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),
-                        child: const Text('Simpan Perubahan',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text('Simpan Perubahan',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(height: 20),

@@ -1,11 +1,11 @@
 {
-    "name": "frontmob",
-    "short_name": "frontmob",
+    "name": "ParkFinder",
+    "short_name": "ParkFinder",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0D1628",
+    "theme_color": "#00D2FF",
+    "description": "Aplikasi manajemen parkir personal — scan, booking, riwayat, dan notifikasi.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/storage/active_ticket_storage.dart';
+import '../../../core/storage/active_reservation_storage.dart';
 import '../../public_widget/bottom_nav_bar.dart';
 import '../../public_widget/search_bar_widget.dart';
 import 'floor_tab_widget.dart';
 import 'parking_slot_item_widget.dart';
 import 'parking_slot_map_widget.dart';
+import '../../booking/service/booking_service.dart';
+import '../../profil/service/profile_service.dart';
+import '../../profil/service/vehicle_service.dart';
+import '../../public_widget/no_ticket_dialog.dart';
 
 /// DetailBookingWidget: Composer untuk halaman peta slot parkir.
 ///
@@ -14,7 +20,9 @@ import 'parking_slot_map_widget.dart';
 /// - Menyusun widget: AppBar custom, SearchBar, FloorTabs, ZoneHeader, SlotMap
 /// - Menangani navigasi
 class DetailBookingWidget extends StatefulWidget {
-  const DetailBookingWidget({super.key});
+  final String areaId;
+
+  const DetailBookingWidget({super.key, required this.areaId});
 
   @override
   State<DetailBookingWidget> createState() => _DetailBookingWidgetState();
@@ -24,33 +32,58 @@ class _DetailBookingWidgetState extends State<DetailBookingWidget> {
   // ── State ────────────────────────────────────────────────────────────────
   int _selectedFloorTab = 0;
   int _navIndex = 1;
+  bool _isLoading = true;
 
   // ── Data ─────────────────────────────────────────────────────────────────
-  final List<ParkingSlotData> _leftSlots = const [
-    ParkingSlotData(label: 'A20', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A19', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A18', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A17', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A16', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A15', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A14', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A13', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A12', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A11', status: SlotStatus.alatRusak),
-  ];
+  List<ParkingSlotData> _leftSlots = [];
+  List<ParkingSlotData> _rightSlots = [];
 
-  final List<ParkingSlotData> _rightSlots = const [
-    ParkingSlotData(label: 'A01', status: SlotStatus.terisi),
-    ParkingSlotData(label: 'A02', status: SlotStatus.kosong),
-    ParkingSlotData(label: 'A03', status: SlotStatus.terpesan),
-    ParkingSlotData(label: 'A04', status: SlotStatus.kosong),
-    ParkingSlotData(label: 'A05', status: SlotStatus.kosong),
-    ParkingSlotData(label: 'A06', status: SlotStatus.pemeliharaan),
-    ParkingSlotData(label: 'A07', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A08', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A09', status: SlotStatus.alatRusak),
-    ParkingSlotData(label: 'A10', status: SlotStatus.alatRusak),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchSlots();
+  }
+
+  Future<void> _fetchSlots() async {
+    if (widget.areaId.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    final service = BookingService();
+    final slots = await service.getSlots(widget.areaId);
+
+    if (mounted) {
+      setState(() {
+        // Simple division of slots to left and right for UI purpose
+        final half = (slots.length / 2).ceil();
+        
+        SlotStatus mapStatus(String st) {
+          switch (st.toLowerCase()) {
+            case 'available': return SlotStatus.kosong;
+            case 'occupied': return SlotStatus.terisi;
+            case 'booked': return SlotStatus.terpesan;
+            case 'maintenance': return SlotStatus.pemeliharaan;
+            default: return SlotStatus.alatRusak;
+          }
+        }
+
+        _leftSlots = slots.take(half).map((s) => ParkingSlotData(
+          id: s.id,
+          label: s.slotNumber, 
+          status: mapStatus(s.status)
+        )).toList();
+        
+        _rightSlots = slots.skip(half).map((s) => ParkingSlotData(
+          id: s.id,
+          label: s.slotNumber, 
+          status: mapStatus(s.status)
+        )).toList();
+        
+        _isLoading = false;
+      });
+    }
+  }
 
   static const _floorTabs = ['Semua', 'Lantai 1', 'Lantai 2'];
 
@@ -60,6 +93,9 @@ class _DetailBookingWidgetState extends State<DetailBookingWidget> {
     switch (idx) {
       case 0:
         Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 2:
+        Navigator.pushNamed(context, AppRoutes.statusKendaraan);
         break;
       case 3:
         Navigator.pushNamed(context, AppRoutes.history);
@@ -114,19 +150,83 @@ class _DetailBookingWidgetState extends State<DetailBookingWidget> {
 
         // ⑤ Peta slot parkir
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: ParkingSlotMapWidget(
-              leftSlots: _leftSlots,
-              rightSlots: _rightSlots,
-            ),
-          ),
+          child: _isLoading 
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: ParkingSlotMapWidget(
+                  leftSlots: _leftSlots,
+                  rightSlots: _rightSlots,
+                  onSlotTap: (slot) => _handleSlotBooking(slot),
+                ),
+              ),
         ),
 
         // ⑥ Bottom nav
         AppBottomNavBar(currentIndex: _navIndex, onTap: _onNavTap),
       ],
     );
+  }
+  Future<void> _handleSlotBooking(ParkingSlotData slot) async {
+    if (slot.status != SlotStatus.kosong) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Slot tidak tersedia.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Get Profile for name and plateNumber
+    final profileService = ProfileService();
+    final vehicleService = VehicleService();
+    final profile = await profileService.getProfile();
+    final vehicles = await vehicleService.getVehicles();
+
+    final name = profile?.name ?? 'User';
+    final plateNumber = vehicles.isNotEmpty ? vehicles.first.plateNumber : 'UNKNOWN';
+
+    final activeTicket = await ActiveTicketStorage().load();
+    final ticketId = activeTicket?.ticketCode ?? 'unknown';
+
+    if (activeTicket == null || activeTicket.status != 'active') {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        NoTicketDialog.show(context);
+      }
+      return;
+    }
+
+    final bookingService = BookingService();
+    final result = await bookingService.createReservation(slot.id ?? '', ticketId, name, plateNumber);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result.success && result.reservationId.isNotEmpty) {
+        final reservation = ActiveReservation(
+          reservationId: result.reservationId,
+          status: result.status,
+          slotId: slot.id ?? '',
+          slotName: slot.label,
+          areaId: widget.areaId,
+          ticketId: ticketId,
+          startTime: DateTime.now().toIso8601String(),
+        );
+        await ActiveReservationStorage().save(reservation);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message), backgroundColor: Colors.green),
+        );
+        _fetchSlots();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 }
 

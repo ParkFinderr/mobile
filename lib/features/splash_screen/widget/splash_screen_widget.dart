@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/pwa/pwa_install_service.dart';
+import '../../../core/pwa/pwa_install_dialog.dart';
+import '../../profil/service/profile_service.dart';
 import '../../welcome/page/welcome_page.dart';
 
 class SplashScreenWidget extends StatefulWidget {
@@ -17,6 +23,9 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
   late final AnimationController _entryController;
   late final Animation<Offset> _slideInAnimation;
   late final Animation<double> _fadeInAnimation;
+
+  StreamSubscription? _installSubscription;
+  bool _didCheckPwa = false;
 
   static const String _cdnBaseUrl =
       'https://storage.googleapis.com/parkfinderbucket';
@@ -42,15 +51,90 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
     );
 
     _entryController.forward();
+    _initPwaCheck();
   }
 
   @override
   void dispose() {
+    _installSubscription?.cancel();
     _entryController.dispose();
     super.dispose();
   }
 
-  void _goToHome(BuildContext context) {
+  void _initPwaCheck() {
+    if (kIsWeb) {
+      _installSubscription = PwaInstallService.instance.onInstallAvailable.listen((_) {
+        if (mounted) {
+          _checkPwaInstall();
+        }
+      });
+
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          _checkPwaInstall();
+        }
+      });
+    }
+  }
+
+  Future<void> _checkPwaInstall() async {
+    if (_didCheckPwa) return;
+    if (!kIsWeb) return;
+
+    if (PwaInstallService.instance.isStandalone) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final lastDismiss = prefs.getInt('pwa_install_popup_last_dismiss');
+    if (lastDismiss != null) {
+      final lastDismissDate = DateTime.fromMillisecondsSinceEpoch(lastDismiss);
+      final difference = DateTime.now().difference(lastDismissDate).inDays;
+      if (difference < 7) {
+        return;
+      }
+    }
+
+    _didCheckPwa = true;
+
+    final available = await PwaInstallService.instance.isInstallPromptAvailable();
+    if (available) {
+      if (mounted) {
+        PwaInstallDialog.show(
+          context,
+          onDismiss: () {
+            _goToHome(context);
+          },
+        );
+      }
+    } else {
+      final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+      if (isIOS) {
+        if (mounted) {
+          PwaSafariInstallDialog.show(
+            context,
+            onDismiss: () {
+              _goToHome(context);
+            },
+          );
+        }
+      }
+    }
+  }
+
+  void _goToHome(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    if (token != null) {
+      // Validate token by fetching profile
+      final profile = await ProfileService().getProfile();
+      if (profile != null && mounted) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        return;
+      }
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 420),

@@ -51,10 +51,11 @@ extension SlotStatusExtension on SlotStatus {
 
 /// Data model satu slot parkir.
 class ParkingSlotData {
+  final String? id;
   final String label;
   final SlotStatus status;
 
-  const ParkingSlotData({required this.label, required this.status});
+  const ParkingSlotData({this.id, required this.label, required this.status});
 }
 
 /// Widget feature-specific: Satu item slot parkir dengan warna status,
@@ -64,11 +65,13 @@ class ParkingSlotData {
 class ParkingSlotItemWidget extends StatelessWidget {
   final ParkingSlotData slot;
   final bool showIconOnLeft; // true = kolom kiri (ikon di kanan)
+  final VoidCallback? onTap;
 
   const ParkingSlotItemWidget({
     super.key,
     required this.slot,
     this.showIconOnLeft = false,
+    this.onTap,
   });
 
   @override
@@ -79,8 +82,10 @@ class ParkingSlotItemWidget extends StatelessWidget {
         slot.status != SlotStatus.alatRusak &&
         slot.status != SlotStatus.pemeliharaan;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
@@ -115,6 +120,6 @@ class ParkingSlotItemWidget extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

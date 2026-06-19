@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../welcome_scan/service/scan_service.dart';
 
 const String _cdnBaseUrl = 'https://storage.googleapis.com/parkfinderbucket';
 
 class ScanBerhasilWidget extends StatefulWidget {
-  const ScanBerhasilWidget({super.key});
+  final TicketData? ticketData;
+
+  const ScanBerhasilWidget({super.key, this.ticketData});
 
   @override
   State<ScanBerhasilWidget> createState() => _ScanBerhasilWidgetState();
@@ -167,9 +170,9 @@ class _ScanBerhasilWidgetState extends State<ScanBerhasilWidget>
                                 color: AppColors.textSecondary, fontSize: 13),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'TXT-20260302-0054',
-                            style: TextStyle(
+                          Text(
+                            widget.ticketData?.ticketCode ?? 'TXT-00000000-0000',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -191,16 +194,25 @@ class _ScanBerhasilWidgetState extends State<ScanBerhasilWidget>
                               Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: AppColors.green,
+                                  color: widget.ticketData?.status == 'active'
+                                      ? AppColors.green
+                                      : AppColors.accent,
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Text(
-                                'Aktif',
+                              Text(
+                                widget.ticketData?.status == 'active'
+                                    ? 'Aktif'
+                                    : widget.ticketData?.status != null &&
+                                            widget.ticketData!.status.isNotEmpty
+                                        ? widget.ticketData!.status
+                                        : 'Aktif',
                                 style: TextStyle(
-                                  color: AppColors.green,
+                                  color: widget.ticketData?.status == 'active'
+                                      ? AppColors.green
+                                      : AppColors.accent,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),

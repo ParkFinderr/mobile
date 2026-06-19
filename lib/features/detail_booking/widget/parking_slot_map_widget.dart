@@ -9,11 +9,13 @@ import 'parking_slot_item_widget.dart';
 class ParkingSlotMapWidget extends StatelessWidget {
   final List<ParkingSlotData> leftSlots;
   final List<ParkingSlotData> rightSlots;
+  final void Function(ParkingSlotData)? onSlotTap;
 
   const ParkingSlotMapWidget({
     super.key,
     required this.leftSlots,
     required this.rightSlots,
+    this.onSlotTap,
   });
 
   @override
@@ -27,6 +29,7 @@ class ParkingSlotMapWidget extends StatelessWidget {
                 .map((slot) => ParkingSlotItemWidget(
                       slot: slot,
                       showIconOnLeft: true,
+                      onTap: onSlotTap != null ? () => onSlotTap!(slot) : null,
                     ))
                 .toList(),
           ),
@@ -40,6 +43,7 @@ class ParkingSlotMapWidget extends StatelessWidget {
                 .map((slot) => ParkingSlotItemWidget(
                       slot: slot,
                       showIconOnLeft: false,
+                      onTap: onSlotTap != null ? () => onSlotTap!(slot) : null,
                     ))
                 .toList(),
           ),

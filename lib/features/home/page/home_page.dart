@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widget/home_widget.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../app/app_routes.dart';
 
 const String _cdn = 'https://storage.googleapis.com/parkfinderbucket';
 const String _kTutorialSeen = 'tutorial_seen';

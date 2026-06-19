@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Widget shared: Header halaman dengan avatar, nama user, greeting,
@@ -8,12 +9,14 @@ import '../../core/theme/app_colors.dart';
 class UserHeaderWidget extends StatelessWidget {
   final String name;
   final String greeting;
+  final String? photoUrl;
   final VoidCallback? onNotificationTap;
 
   const UserHeaderWidget({
     super.key,
     required this.name,
     required this.greeting,
+    this.photoUrl,
     this.onNotificationTap,
   });
 
@@ -32,7 +35,26 @@ class UserHeaderWidget extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.accent, width: 2),
             ),
-            child: const Icon(Icons.person, color: Colors.white70, size: 28),
+            child: photoUrl != null && photoUrl!.isNotEmpty
+                ? ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: photoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.person, color: Colors.white70, size: 28),
+                    ),
+                  )
+                : const Icon(Icons.person, color: Colors.white70, size: 28),
           ),
           const SizedBox(width: 12),
           // Nama & Greeting

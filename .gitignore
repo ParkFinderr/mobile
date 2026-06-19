@@ -47,3 +47,23 @@ app.*.map.json
 # ignore web
 /webuser
 /web-admin
+/web-admin/
+web-admin
+
+/dash-qr
+dash-qr
+/dash-qr/
+
+webGenerateQrcode/
+ /webGenerateQrcode
+ /webGenerateQrcode/
+
+ # opencode skills
+ skills/
+
+ /skills
+skills/SKILL.md
+
+.opencode/
+
+prompt.md

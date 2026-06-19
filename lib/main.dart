@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:device_preview/device_preview.dart';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'core/pwa/pwa_update_service.dart';
+import 'core/pwa/pwa_install_service.dart';
 import 'app/app.dart';
 
 void main() {
-  runApp(
-    DevicePreview(
-      enabled: true,
-      builder: (context) => const MyApp(),
-    ),
-  );
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    PwaUpdateService.instance.init();
+    PwaInstallService.instance.init();
+  }
+  runApp(const MyApp());
 }

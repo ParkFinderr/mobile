@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/storage/active_ticket_storage.dart';
+import '../../access/service/access_service.dart';
+import '../service/scan_service.dart';
 
 class WelcomeScanWidget extends StatefulWidget {
   const WelcomeScanWidget({super.key});
@@ -12,22 +16,34 @@ class WelcomeScanWidget extends StatefulWidget {
 
 class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
     with SingleTickerProviderStateMixin {
-  final MobileScannerController _cameraCtrl = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
+  MobileScannerController? _cameraCtrl;
+  final _ticketCodeCtrl = TextEditingController();
 
-  // Animasi garis scan naik-turun
   late final AnimationController _scanLineCtrl;
   late final Animation<double> _scanLine;
 
   bool _hasScanned = false;
+  bool _isLoading = false;
+  String? _errorMessage;
   bool _torchOn = false;
+  bool _useCamera = true;
 
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) {
+      _useCamera = false;
+    } else {
+      try {
+        _cameraCtrl = MobileScannerController(
+          detectionSpeed: DetectionSpeed.noDuplicates,
+          facing: CameraFacing.back,
+          torchEnabled: false,
+        );
+      } catch (_) {
+        _useCamera = false;
+      }
+    }
     _scanLineCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -38,25 +54,110 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
 
   @override
   void dispose() {
+    _ticketCodeCtrl.dispose();
     _scanLineCtrl.dispose();
-    _cameraCtrl.dispose();
+    _cameraCtrl?.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
-    if (_hasScanned) return;
+  Future<void> _verifyManualCode() async {
+    final code = _ticketCodeCtrl.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan masukkan kode tiket terlebih dahulu.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final scanService = ScanService();
+    final result = await scanService.verifyTicket(code);
+
+    if (!mounted) return;
+
+    if (result != null) {
+      final accessService = AccessService();
+      final activeTicket = await accessService.getActiveTicket();
+      final ticketData = activeTicket ?? result;
+      await ActiveTicketStorage().save(ticketData);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.scanBerhasil,
+        arguments: ticketData,
+      );
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Tiket tidak valid. Silakan periksa kembali kode tiket Anda.';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    if (_hasScanned || _isLoading) return;
     final barcode = capture.barcodes.firstOrNull;
     if (barcode == null || barcode.rawValue == null) return;
 
-    setState(() => _hasScanned = true);
-    _cameraCtrl.stop();
+    setState(() {
+      _hasScanned = true;
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    _cameraCtrl?.stop();
 
-    // Langsung navigate ke halaman hasil scan
-    Navigator.pushReplacementNamed(context, AppRoutes.scanBerhasil);
+    final qrCode = barcode.rawValue!;
+    final scanService = ScanService();
+    final result = await scanService.verifyTicket(qrCode);
+
+    if (!mounted) return;
+
+    if (result != null) {
+      final accessService = AccessService();
+      final activeTicket = await accessService.getActiveTicket();
+      final ticketData = activeTicket ?? result;
+      await ActiveTicketStorage().save(ticketData);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.scanBerhasil,
+        arguments: ticketData,
+      );
+    } else {
+      setState(() {
+        _isLoading = false;
+        _hasScanned = false;
+        _errorMessage = 'Tiket tidak valid. Silakan pindai ulang.';
+      });
+      _cameraCtrl?.start();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_useCamera || _cameraCtrl == null) {
+      return _buildManualLayout(context);
+    }
+
     final topPad = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final now = TimeOfDay.now();
@@ -67,7 +168,7 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
           // ── Layer 1: Live camera feed ──────────────────────────
           Positioned.fill(
             child: MobileScanner(
-              controller: _cameraCtrl,
+              controller: _cameraCtrl!,
               onDetect: _onDetect,
             ),
           ),
@@ -86,13 +187,13 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
             left: 0,
             right: 0,
             bottom: 0,
-            height: 210 + bottomPad,
+            height: 265 + bottomPad,
             child: Container(color: Colors.black.withOpacity(0.55)),
           ),
           // Kiri
           Positioned(
             top: topPad + 64,
-            bottom: 210 + bottomPad,
+            bottom: 265 + bottomPad,
             left: 0,
             width: _sideMargin(context),
             child: Container(color: Colors.black.withOpacity(0.55)),
@@ -100,7 +201,7 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
           // Kanan
           Positioned(
             top: topPad + 64,
-            bottom: 210 + bottomPad,
+            bottom: 265 + bottomPad,
             right: 0,
             width: _sideMargin(context),
             child: Container(color: Colors.black.withOpacity(0.55)),
@@ -111,7 +212,18 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
             child: _ScanFrame(scanLine: _scanLine),
           ),
 
-          // ── Layer 4: Bottom info panel ─────────────────────────
+          // ── Layer 4: Loading overlay ────────────────────────────
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54,
+                child: const Center(
+                  child: CircularProgressIndicator(color: AppColors.accent),
+                ),
+              ),
+            ),
+
+          // ── Layer 5: Bottom info panel ─────────────────────────
           Positioned(
             left: 0,
             right: 0,
@@ -143,6 +255,38 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
                         color: AppColors.textSecondary, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Langkah 1: Scan tiket yang diperoleh dari gerbang masuk.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Langkah 2: Setelah tiket berhasil diverifikasi, Anda dapat melakukan booking slot parkir.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
                   // Tombol aksi
@@ -156,7 +300,7 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
                             : Icons.flashlight_on_rounded,
                         label: _torchOn ? 'Matikan' : 'Senter',
                         onTap: () {
-                          _cameraCtrl.toggleTorch();
+                          _cameraCtrl?.toggleTorch();
                           setState(() => _torchOn = !_torchOn);
                         },
                       ),
@@ -165,16 +309,27 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
                       _ActionButton(
                         icon: Icons.cameraswitch_rounded,
                         label: 'Balik',
-                        onTap: () => _cameraCtrl.switchCamera(),
+                        onTap: () => _cameraCtrl?.switchCamera(),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => setState(() => _useCamera = false),
+                    child: const Text(
+                      'Masukkan Kode Manual',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── Layer 5: Tombol tutup / kembali ───────────────────
+          // ── Layer 6: Tombol tutup / kembali ───────────────────
           Positioned(
             top: topPad + 12,
             left: 16,
@@ -194,7 +349,7 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
             ),
           ),
 
-          // ── Layer 6: Hint teks di atas frame ──────────────────
+          // ── Layer 7: Hint teks di atas frame ──────────────────
           Positioned(
             top: topPad + 72,
             left: 0,
@@ -212,6 +367,302 @@ class _WelcomeScanWidgetState extends State<WelcomeScanWidget>
         ],
       ),
     );
+  }
+
+  Widget _buildManualLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Header/App bar manual
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.borderColor),
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Verifikasi Tiket',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 40),
+                ],
+              ),
+              const SizedBox(height: 40),
+
+              // Orbiting elements / QR Icon fallback
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg2,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.accent, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withOpacity(0.3),
+                      blurRadius: 25,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: Colors.white,
+                  size: 64,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              const Text(
+                'Verifikasi Tiket',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Kamera tidak tersedia. Silakan masukkan kode tiket parkir Anda secara manual untuk melanjutkan booking.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // Step Guidance Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF132136).withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF00D2FF).withOpacity(0.25),
+                    width: 1.2,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFF00D2FF),
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Langkah Aktivasi Sesi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00D2FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text(
+                            '1',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Masukkan kode tiket yang diperoleh dari gerbang masuk ke kolom di bawah.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00D2FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text(
+                            '2',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Setelah tiket berhasil diverifikasi, Anda dapat melakukan booking slot parkir.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Input Card
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kode Tiket Parkir',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _ticketCodeCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: TCK-12345',
+                        hintStyle:
+                            const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                        filled: true,
+                        fillColor: AppColors.cardBg2,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 16),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _verifyManualCode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Verifikasi Tiket',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() => _useCamera = true);
+                  _initCamera();
+                },
+                icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                label: const Text('Gunakan Kamera'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _initCamera() {
+    if (_cameraCtrl != null) return;
+    try {
+      _cameraCtrl = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+      );
+    } catch (_) {
+      _useCamera = false;
+    }
+    if (mounted) setState(() {});
   }
 
   double _sideMargin(BuildContext context) {

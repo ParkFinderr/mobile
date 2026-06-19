@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../login/service/auth_service.dart';
 import 'dart:ui';
 
 const String _cdnBaseUrl = 'https://storage.googleapis.com/parkfinderbucket';
@@ -81,10 +82,35 @@ class _RegisterWidgetState extends State<RegisterWidget>
 
   void _doRegister() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
+    
+    final name = _namaCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final phone = _teleponCtrl.text.trim();
+    final vehicle = _noKendCtrl.text.trim();
+    final password = _passCtrl.text;
+    final confirm = _confirmPassCtrl.text;
+
+    if (password != confirm) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kata sandi tidak cocok.')),
+      );
+      return;
+    }
+
+    final authService = AuthService();
+    final error = await authService.register(name, email, phone, password, vehicle);
+
     if (!mounted) return;
     setState(() => _isLoading = false);
-    _showSuccessDialog();
+    
+    if (error == null) {
+      _showSuccessDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    }
   }
 
   void _showSuccessDialog() {

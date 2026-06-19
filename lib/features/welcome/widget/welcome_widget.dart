@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
 
 // CDN base for remote assets used by welcome page
 const String _cdnBaseUrl = 'https://storage.googleapis.com/parkfinderbucket';
