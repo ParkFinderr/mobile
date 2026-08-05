@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js_util' as js_util;
+import 'package:flutter/foundation.dart';
 
 class PwaUpdateService {
   static final PwaUpdateService instance = PwaUpdateService._();
@@ -31,7 +32,7 @@ class PwaUpdateService {
         });
       }
     } catch (e) {
-      print('SW waiting check error: $e');
+      debugPrint('SW waiting check error: $e');
     }
   }
 
@@ -48,7 +49,7 @@ class PwaUpdateService {
         });
       }
     } catch (e) {
-      print('checkForUpdate error: $e');
+      debugPrint('checkForUpdate error: $e');
     }
   }
 
@@ -56,7 +57,7 @@ class PwaUpdateService {
     try {
       html.window.location.reload();
     } catch (e) {
-      print('performUpdate error: $e');
+      debugPrint('performUpdate error: $e');
     }
   }
 }

@@ -6,8 +6,8 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_front/app/app.dart';
-import 'package:mobile_front/features/splash_screen/widget/splash_screen_widget.dart';
+import 'package:mobile_front/core/app/app.dart';
+import 'package:mobile_front/features/splash/widgets/splash_widget.dart';
 
 void main() {
   testWidgets('Menampilkan splash screen saat aplikasi dibuka',

@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/welcome_scan/service/scan_service.dart';
+import '../constants/app_constants.dart';
+import '../../features/scan/models/ticket_data.dart';
 
+/// ActiveTicketStorage — Penyimpanan tiket parkir aktif secara lokal.
+///
+/// Menyimpan [TicketData] ke SharedPreferences agar tersedia
+/// saat app di-restart tanpa harus fetch ulang dari server.
 class ActiveTicketStorage {
-  static const String _key = 'active_ticket';
+  static const String _key = AppConstants.keyActiveTicket;
 
   Future<void> save(TicketData ticket) async {
     final prefs = await SharedPreferences.getInstance();

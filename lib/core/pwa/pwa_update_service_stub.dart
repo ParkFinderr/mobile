@@ -5,7 +5,7 @@ class PwaUpdateService {
   PwaUpdateService._();
 
   Stream<void> get onUpdateReady => const Stream.empty();
-  
+
   void init() {}
   void checkForUpdate() {}
   void performUpdate() {}

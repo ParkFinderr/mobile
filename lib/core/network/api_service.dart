@@ -1,34 +1,30 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
+import '../storage/token_storage.dart';
 
-class ApiService {
-  static const String baseUrl = 'https://backend-api-services-173368161554.asia-southeast2.run.app';
-  static const String _tokenKey = 'jwt_token';
+/// ApiClient — HTTP client terpusat untuk REST API ParkFinder.
+///
+/// Bertanggung jawab HANYA untuk komunikasi HTTP.
+/// Token management didelegasikan ke [TokenStorage].
+/// Semua feature service menggunakan class ini sebagai base HTTP layer.
+/// Request dikirim langsung ke backend REST API Cloud Run.
+class ApiClient {
+  final TokenStorage _tokenStorage = TokenStorage();
 
-  Future<void> setToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-  }
-
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
-  }
-
-  Future<void> clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-  }
+  // Singleton agar tidak ada duplikasi instance
+  static final ApiClient _instance = ApiClient._internal();
+  factory ApiClient() => _instance;
+  ApiClient._internal();
 
   Future<Map<String, String>> _getHeaders({bool requireAuth = false}) async {
-    final headers = {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
     if (requireAuth) {
-      final token = await getToken();
+      final token = await _tokenStorage.load();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -36,32 +32,62 @@ class ApiService {
     return headers;
   }
 
-  Future<http.Response> get(String endpoint, {bool requireAuth = false}) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+  Future<http.Response> get(
+    String endpoint, {
+    bool requireAuth = false,
+  }) async {
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final headers = await _getHeaders(requireAuth: requireAuth);
     return http.get(url, headers: headers);
   }
 
-  Future<http.Response> post(String endpoint, {Map<String, dynamic>? body, bool requireAuth = false}) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+  Future<http.Response> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requireAuth = false,
+  }) async {
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final headers = await _getHeaders(requireAuth: requireAuth);
-    return http.post(url, headers: headers, body: body != null ? jsonEncode(body) : null);
+    return http.post(
+      url,
+      headers: headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
   }
 
-  Future<http.Response> put(String endpoint, {Map<String, dynamic>? body, bool requireAuth = false}) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+  Future<http.Response> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requireAuth = false,
+  }) async {
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final headers = await _getHeaders(requireAuth: requireAuth);
-    return http.put(url, headers: headers, body: body != null ? jsonEncode(body) : null);
+    return http.put(
+      url,
+      headers: headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
   }
 
-  Future<http.Response> patch(String endpoint, {Map<String, dynamic>? body, bool requireAuth = false}) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+  Future<http.Response> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requireAuth = false,
+  }) async {
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final headers = await _getHeaders(requireAuth: requireAuth);
-    return http.patch(url, headers: headers, body: body != null ? jsonEncode(body) : null);
+    return http.patch(
+      url,
+      headers: headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
   }
 
-  Future<http.Response> delete(String endpoint, {bool requireAuth = false}) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+  Future<http.Response> delete(
+    String endpoint, {
+    bool requireAuth = false,
+  }) async {
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final headers = await _getHeaders(requireAuth: requireAuth);
     return http.delete(url, headers: headers);
   }
@@ -73,25 +99,34 @@ class ApiService {
     String fieldName = 'image',
     bool requireAuth = false,
   }) async {
-    final url = Uri.parse('$baseUrl$endpoint');
+    final url = Uri.parse('${AppConfig.baseUrl}$endpoint');
     final request = http.MultipartRequest('POST', url);
 
     if (requireAuth) {
-      final token = await getToken();
+      final token = await _tokenStorage.load();
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
     }
     request.headers['Accept'] = 'application/json';
 
-    final multipartFile = http.MultipartFile.fromBytes(
-      fieldName,
-      fileBytes,
-      filename: fileName,
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        fieldName,
+        fileBytes,
+        filename: fileName,
+      ),
     );
-    request.files.add(multipartFile);
 
-    final streamedResponse = await request.send();
-    return http.Response.fromStream(streamedResponse);
+    final streamed = await request.send();
+    return http.Response.fromStream(streamed);
   }
 }
+
+/// ApiService — Alias backward-compatible untuk ApiClient.
+///
+/// Disediakan agar service-service lama yang masih menggunakan `ApiService`
+/// tidak perlu diubah sekaligus. Secara bertahap semua import akan diganti ke ApiClient.
+///
+/// @deprecated Gunakan [ApiClient] secara langsung.
+typedef ApiService = ApiClient;

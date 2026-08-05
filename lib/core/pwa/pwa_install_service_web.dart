@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js_util' as js_util;
+import 'package:flutter/foundation.dart';
 
 class PwaInstallService {
   static final PwaInstallService instance = PwaInstallService._();
@@ -11,7 +12,7 @@ class PwaInstallService {
   Stream<void> get onInstallAvailable => _installAvailableController.stream;
 
   bool get isSupported => true;
-  
+
   void init() {
     html.window.addEventListener('pwa-install-available', (event) {
       _installAvailableController.add(null);
@@ -20,8 +21,10 @@ class PwaInstallService {
 
   bool get isStandalone {
     try {
-      final isStandaloneMode = html.window.matchMedia('(display-mode: standalone)').matches;
-      final isSafariStandalone = js_util.getProperty(html.window.navigator, 'standalone') == true;
+      final isStandaloneMode =
+          html.window.matchMedia('(display-mode: standalone)').matches;
+      final isSafariStandalone =
+          js_util.getProperty(html.window.navigator, 'standalone') == true;
       return isStandaloneMode || isSafariStandalone;
     } catch (_) {
       return false;
@@ -41,12 +44,11 @@ class PwaInstallService {
     try {
       if (js_util.hasProperty(html.window, 'triggerPWAInstall')) {
         final result = await js_util.promiseToFuture(
-          js_util.callMethod(html.window, 'triggerPWAInstall', [])
-        );
+            js_util.callMethod(html.window, 'triggerPWAInstall', []));
         return result.toString(); // 'accepted', 'dismissed', 'not-available'
       }
     } catch (e) {
-      print('triggerInstall error: $e');
+      debugPrint('triggerInstall error: $e');
     }
     return 'not-available';
   }

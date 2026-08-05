@@ -6,7 +6,7 @@ class PwaInstallService {
 
   bool get isSupported => false;
   bool get isStandalone => false;
-  
+
   Stream<void> get onInstallAvailable => const Stream.empty();
 
   void init() {}
