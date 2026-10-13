@@ -2,6 +2,14 @@
 
 ## Selesai
 
+- **Build Release APK Native Android & Web PWA Berhasil 100%**:
+  - **Rilis APK Native Android (`app-release.apk`)**:
+    - Aplikasi berhasil dikompilasi secara penuh ke paket Android rilis (`flutter build apk --release`).
+    - Berkas rilis APK tersedia di: [`build/app/outputs/flutter-apk/app-release.apk`](file:///c:/programming/mobile-front/build/app/outputs/flutter-apk/app-release.apk) (ukuran: ~70.4 MB).
+    - Berjalan penuh secara online terhubung ke Cloud Run Backend.
+  - **Rilis Web PWA (`pwa/`)**:
+    - Aplikasi berhasil di-compile ke Web PWA rilis (`flutter build web --release`).
+    - Seluruh bundle rilis PWA terbaru telah disalin dan diperbarui di direktori [`pwa/`](file:///c:/programming/mobile-front/pwa).
 - **Sinkronisasi Total Slot Parkir, Timer Real-Time Beranda vs Status Parkir, & Notifikasi Real-Time Backend**:
   - **Sinkronisasi Slot Parkir & Penjagaan Slot Name**:
     - Memperbarui `HomeWidget` ([home_widget.dart](file:///c:/programming/mobile-front/lib/features/home/widgets/home_widget.dart)) dan `StatusKendaraanPage` ([status_kendaraan_page.dart](file:///c:/programming/mobile-front/lib/features/home/pages/status_kendaraan_page.dart)) agar `slotName` asli pengguna (misal `A01`, `A05`, dsb.) tidak lagi terhapus atau tertimpa string kosong saat melakukan sinkronisasi dengan data backend.
@@ -54,8 +62,6 @@
   - Mengonfigurasi `_checkActiveTicket()` di [home_widget.dart](file:///c:/programming/mobile-front/lib/features/home/widgets/home_widget.dart).
 - **Integrasi Statistik Profil (Total Parkir & Parkir Aktif) dengan Live Backend**:
   - Mengonfigurasi kartu statistik pada [profil_widget.dart](file:///c:/programming/mobile-front/lib/features/profile/widgets/profil_widget.dart) dan [stats_card_widget.dart](file:///c:/programming/mobile-front/lib/features/profile/widgets/stats_card_widget.dart).
-- **Build Rilis & Ekspor PWA ke Direktori `pwa/`**:
-  - Aplikasi berhasil di-compile ke Web PWA rilis (`flutter build web --release`).
 - **Import Aset Foto Real dari `cdn-example` (Bukan Template/Dummy Lagi)**:
   - Mengimpor dan mengonfigurasi seluruh foto real dari sampel CDN (`cdn-example/`) ke dalam `lib/assets/` aplikasi.
 - **Integrasi Full Real REST API Live Backend**:
@@ -64,8 +70,8 @@
 
 ## Sedang dikerjakan
 
-- Pengujian PWA pada perangkat mobile Android.
+- Pengujian pada perangkat mobile Android (APK & PWA).
 
 ## Tersisa
 
-- Tidak ada (seluruh tugas utama telah diselesaikan).
+- Tidak ada (seluruh rilis PWA dan APK Native Release telah selesai 100%).
